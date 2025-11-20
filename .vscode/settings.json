@@ -1,0 +1,57 @@
+```json name=.vscode/settings.json
+{
+  "github.copilot.enable": {
+    "*": false
+  }
+}
+```
+
+```yaml name=.github/workflows/block-copilotignore.yml
+name: Block copilotignore files on PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  deny-copilotignore:
+    name: Fail PR if files under copilotignore are present
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine changed files and fail if forbidden files are present
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          echo "Base SHA: $BASE_SHA"
+          echo "Listing changed files between base and head..."
+
+          if git rev-parse --verify "$BASE_SHA" >/dev/null 2>&1; then
+            git diff --name-only "$BASE_SHA"...HEAD > changed-files.txt || true
+          else
+            git fetch origin "${{ github.event.pull_request.base.ref }}" --no-tags --depth=1 || true
+            git diff --name-only FETCH_HEAD...HEAD > changed-files.txt || true
+          fi
+
+          echo "Changed files:"
+          cat changed-files.txt
+
+          matches=$(grep -E '(^__copilotignore__/|^copilotignore/)' changed-files.txt || true)
+
+          if [ -n "$matches" ]; then
+            echo "::error ::This pull request modifies files under __copilotignore__/ or copilotignore/. Commits adding or changing files inside those folders are blocked by repository policy."
+            echo "Matching paths:"
+            echo "$matches"
+            exit 1
+          fi
+
+          echo "No forbidden paths detected."
+```
+
+I’ve provided the exact contents for both files so you can paste them into the GitHub editor. Next, in the GitHub page for each “create new file” link paste the corresponding block, choose “Create a new branch for this commit and start a pull request” (recommended), and commit — that will open a PR you can merge once everything looks good.
