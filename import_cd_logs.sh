@@ -105,8 +105,8 @@ backup_log() {
     if [ -f "$log_file" ]; then
         local backup_dir="${dest_dir}/backup"
         mkdir -p "$backup_dir" 2>/dev/null
-        local backup_file="${backup_dir}/$(basename $log_file).${TIMESTAMP}.bak"
-        print_info "Backing up existing log: $(basename $log_file) -> $backup_file"
+        local backup_file="${backup_dir}/$(basename "$log_file").${TIMESTAMP}.bak"
+        print_info "Backing up existing log: $(basename "$log_file") -> $backup_file"
         cp "$log_file" "$backup_file"
         if [ $? -eq 0 ]; then
             print_info "Backup created successfully: $backup_file"
@@ -224,18 +224,34 @@ main() {
     while [[ $# -gt 0 ]]; do
         case $1 in
             -s|--source)
+                if [ -z "$2" ] || [[ "$2" == -* ]]; then
+                    print_error "Option $1 requires a value"
+                    usage
+                fi
                 source_dir="$2"
                 shift 2
                 ;;
             -d|--destination)
+                if [ -z "$2" ] || [[ "$2" == -* ]]; then
+                    print_error "Option $1 requires a value"
+                    usage
+                fi
                 dest_dir="$2"
                 shift 2
                 ;;
             -n|--node)
+                if [ -z "$2" ] || [[ "$2" == -* ]]; then
+                    print_error "Option $1 requires a value"
+                    usage
+                fi
                 CD_NODE="$2"
                 shift 2
                 ;;
             -t|--type)
+                if [ -z "$2" ] || [[ "$2" == -* ]]; then
+                    print_error "Option $1 requires a value"
+                    usage
+                fi
                 specific_type="$2"
                 shift 2
                 ;;
@@ -258,6 +274,20 @@ main() {
         print_error "Source directory is required"
         echo ""
         usage
+    fi
+    
+    # Validate log type if specified
+    if [ -n "$specific_type" ]; then
+        case "$specific_type" in
+            stats|process|activity)
+                # Valid type
+                ;;
+            *)
+                print_error "Invalid log type: $specific_type"
+                print_error "Valid types are: stats, process, activity"
+                exit 1
+                ;;
+        esac
     fi
     
     # Validate source directory
